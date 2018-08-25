@@ -17,7 +17,17 @@ import com.baidu.mapapi.map.MapView;
 import com.baidu.mapapi.SDKInitializer;
 import com.baidu.mapapi.map.MapViewLayoutParams;
 import com.baidu.mapapi.map.Marker;
+import com.baidu.mapapi.map.Overlay;
 import com.baidu.mapapi.model.LatLng;
+import com.baidu.mapapi.overlayutil.WalkingRouteOverlay;
+import com.baidu.mapapi.search.route.BikingRouteResult;
+import com.baidu.mapapi.search.route.DrivingRouteResult;
+import com.baidu.mapapi.search.route.OnGetRoutePlanResultListener;
+import com.baidu.mapapi.search.route.PlanNode;
+import com.baidu.mapapi.search.route.RoutePlanSearch;
+import com.baidu.mapapi.search.route.TransitRouteResult;
+import com.baidu.mapapi.search.route.WalkingRouteLine;
+import com.baidu.mapapi.search.route.WalkingRouteResult;
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.ReadableArray;
 import com.facebook.react.bridge.ReadableMap;
@@ -164,6 +174,64 @@ public class BaiduMapViewManager extends ViewGroupManager<MapView> {
     @ReactProp(name = "childrenPoints")
     public void setChildrenPoints(MapView mapView, ReadableArray childrenPoints) {
         this.childrenPoints = childrenPoints;
+    }
+
+    @ReactProp(name = "routePlanInfos")
+    public void setRoutePlanInfos(MapView mapView, ReadableArray options) {
+        if(options.size() == 0) {
+            return;
+        }
+        /** 地图 */
+        final BaiduMap map = mapView.getMap();
+        /** 开始点 */
+        ReadableMap startInfo = options.getMap(0);
+        LatLng startPosition = new LatLng(
+                startInfo.getDouble("latitude"),
+                startInfo.getDouble("longitude")
+        );
+        /** 结束点 */
+        ReadableMap endInfo = options.getMap(1);
+        LatLng endPosition = new LatLng(
+                endInfo.getDouble("latitude"),
+                endInfo.getDouble("longitude")
+        );
+
+        /** 路线规划对象 */
+        BaiduCustomRouteSearch routeSearch = new BaiduCustomRouteSearch();
+        routeSearch.setOnMyGetRoutePlanResultListener(new BaiduCustomRouteSearch.OnMyGetRoutePlanResultListener() {
+            @Override
+            public void onGetBikingRouteResult(Boolean success, BikingRouteResult result) {
+
+            }
+
+            @Override
+            public void onGetWalkingRouteResult(Boolean success, WalkingRouteResult result) {
+                if (!success) {
+                    return;
+                }
+                WalkingRouteOverlay overlay = new WalkingRouteOverlay(map);
+                overlay.setData(result.getRouteLines().get(0));
+                overlay.addToMap();
+                overlay.zoomToSpan();
+            }
+
+            @Override
+            public void onGetTransitRouteResult(Boolean success, TransitRouteResult result) {
+
+            }
+
+            @Override
+            public void onGetDrivingRouteResult(Boolean success, DrivingRouteResult result) {
+
+            }
+        });
+        // 开始计算路线（这里只使用了步行路线）
+        routeSearch.SearchProcess(
+                startPosition,
+                endPosition,
+                null,
+                BaiduCustomRouteSearch.WalkingRoute
+        );
     }
 
     /**
